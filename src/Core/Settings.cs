@@ -27,7 +27,7 @@ namespace LiteMonitor
         // ====== 显示项（整组/子项开关）======
         public EnabledSet Enabled { get; set; } = new();
 
-        private static string FilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+        private static string FilePath => Path.Combine(AppContext.BaseDirectory, "settings.json");
 
         public static Settings Load()
         {

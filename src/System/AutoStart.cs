@@ -36,7 +36,8 @@ namespace LiteMonitor.src.System
         private static void CreateTask()
         {
             string exePath = Process.GetCurrentProcess().MainModule!.FileName!;
-            string quotedPath = $"\"{exePath}\"";
+            // 双层引号：避免 schtasks 吃掉引号（外层）+ 避免路径被空格截断（内层）
+            string quotedPath = $"\"\\\"{exePath}\\\"\"";
 
             // 先删除旧任务，避免报错
             RunSchtasks($"/Delete /TN \"{TaskName}\" /F", out _);
@@ -48,7 +49,11 @@ namespace LiteMonitor.src.System
             // /IT 表示交互式（必须当前登录用户）
             // /SC ONLOGON 表示用户登录时触发
             // 注意：在 Windows 10/11 家庭版无需密码输入
-            string args = $"/Create /TN \"{TaskName}\" /TR {quotedPath} /SC ONLOGON /RL HIGHEST /F /IT /RU \"{user}\"";
+            string exeDir = Path.GetDirectoryName(exePath)!;
+
+            string args =
+                $"/Create /TN \"{TaskName}\" /TR {quotedPath} /SC ONLOGON /RL HIGHEST /F /IT " +
+                $"/RU \"{user}\" /STRTIN \"{exeDir}\"";
 
             int code = RunSchtasks(args, out string output);
             if (code != 0)

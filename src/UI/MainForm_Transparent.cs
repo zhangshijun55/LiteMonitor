@@ -124,18 +124,13 @@ namespace LiteMonitor
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             AutoScaleMode = AutoScaleMode.Dpi;
 
-            // === 托盘图标设置（防止图标文件缺失） ===
-            try
-            {
-                _tray.Icon = File.Exists("resources/assets/app.ico") ? new Icon("resources/assets/app.ico") : SystemIcons.Application;
-            }
-            catch
-            {
-                _tray.Icon = SystemIcons.Application;
-            }
+
+            // === 托盘图标 ===
+            this.Icon = Properties.Resources.AppIcon;
+            _tray.Icon = this.Icon;
             _tray.Visible = true;
             _tray.Text = "LiteMonitor";
-            this.Icon = _tray.Icon;
+
 
             // 将 _cfg 传递给 UIController（构造内会统一加载语言与主题，并应用宽度等）
             _ui = new UIController(_cfg, this);
