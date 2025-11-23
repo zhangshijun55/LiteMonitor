@@ -261,13 +261,13 @@ namespace LiteMonitor
                 });
             }
 
-            // MEM + VRAM 合并列
+            // VRAM +  MEM 合并列
             if (_cfg.Enabled.MemLoad || _cfg.Enabled.GpuVram)
             {
                 cols.Add(new Column
                 {
-                    Top = _cfg.Enabled.MemLoad ? new MetricItem { Key = "MEM.Load" } : null,
-                    Bottom = _cfg.Enabled.GpuVram ? new MetricItem { Key = "GPU.VRAM" } : null
+                    Top = _cfg.Enabled.GpuVram ? new MetricItem { Key = "GPU.VRAM" } : null,
+                    Bottom = _cfg.Enabled.MemLoad ? new MetricItem { Key = "MEM.Load" } : null
                 });
             }
 
