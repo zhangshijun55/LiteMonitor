@@ -194,6 +194,7 @@ namespace LiteMonitor
                 {
                     _ui?.SetDragging(false);
                     _uiDragging = false;
+                    ClampToScreen();      // ★ 新增：松开鼠标后校正位置
                     SavePos();
                 }
             };
@@ -232,10 +233,40 @@ namespace LiteMonitor
             ContextMenuStrip = menu;
         }
 
+        // ========== 限制窗口不能拖出屏幕边界 ==========
+        private void ClampToScreen()
+        {
+
+            if (!_cfg.ClampToScreen) return; // 未开启→不处理
+
+            var area = Screen.FromControl(this).WorkingArea;
+
+            int newX = Left;
+            int newY = Top;
+
+            // 限制 X
+            if (newX < area.Left)
+                newX = area.Left;
+            if (newX + Width > area.Right)
+                newX = area.Right - Width;
+
+            // 限制 Y
+            if (newY < area.Top)
+                newY = area.Top;
+            if (newY + Height > area.Bottom)
+                newY = area.Bottom - Height;
+
+            Left = newX;
+            Top = newY;
+        }
+
+
+
         protected override void OnPaint(PaintEventArgs e) => _ui?.Render(e.Graphics);
 
         private void SavePos()
         {
+            ClampToScreen(); // ★ 新增：确保保存前被校正
             _cfg.Position = new Point(Left, Top);
             _cfg.Save();
         }

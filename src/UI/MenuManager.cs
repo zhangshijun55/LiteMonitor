@@ -188,6 +188,20 @@ namespace LiteMonitor
                 else form.StopAutoHideTimer();
             };
             moreRoot.DropDownItems.Add(autoHide);
+
+            // ★ 新增：限制窗口拖出屏幕
+            var clampItem = new ToolStripMenuItem(LanguageManager.T("Menu.ClampToScreen"))
+            {
+                Checked = cfg.ClampToScreen,
+                CheckOnClick = true
+            };
+            clampItem.CheckedChanged += (_, __) =>
+            {
+                cfg.ClampToScreen = clampItem.Checked;
+                cfg.Save();
+            };
+            moreRoot.DropDownItems.Add(clampItem);
+
             moreRoot.DropDownItems.Add(new ToolStripSeparator());
 
             // === 刷新频率 ===

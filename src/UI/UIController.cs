@@ -129,6 +129,9 @@ namespace LiteMonitor
             // === 横屏模式 ===
             if (_cfg.HorizontalMode)
             {
+                // 确保横屏布局已初始化
+                _hxLayout ??= new HorizontalLayout(t, _form.Width);
+                
                 BuildHorizontalColumns();
 
                 // layout.Build 计算面板高度 & 面板宽度

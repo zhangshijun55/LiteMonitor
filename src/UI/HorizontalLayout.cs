@@ -21,7 +21,7 @@ namespace LiteMonitor
         // 普通列最大值（CPU/GPU/MEM/VRAM/TEMP/LOAD）
         private const string MAX_VALUE_NORMAL = "100°C";
         // IO 列最大值（磁盘+网络）
-        private const string MAX_VALUE_IO = "999.9KB";
+        private const string MAX_VALUE_IO = "99.9KB";
 
         // 列间距（所有列之间额外加入的空隙）
         private const int COLUMN_GAP = 12;
@@ -45,6 +45,7 @@ namespace LiteMonitor
         public int Build(List<Column> cols)
         {
             int pad = _padding;
+            int padV = pad / 2; // 上下视觉补偿，左右仍是 pad
 
             // panel 总宽度初始 = 左右 padding * 2
             int totalWidth = pad * 2;
@@ -89,7 +90,7 @@ namespace LiteMonitor
                     // wLabel + wValue + _rowH(作为左右 padding)
                     // 注意：此处不等宽，每列 colW 不同
                     //
-                    int colW = wLabel + wValue ;
+                    int colW = wLabel + wValue + _rowH;
 
                     // 保存列宽
                     col.ColumnWidth = colW;
@@ -117,7 +118,7 @@ namespace LiteMonitor
             foreach (var col in cols)
             {
                 // col.ColumnWidth 是我们上面算好的宽度
-                col.Bounds = new Rectangle(x, pad, col.ColumnWidth, _rowH * 2);
+                col.Bounds = new Rectangle(x, padV, col.ColumnWidth, _rowH * 2);
 
                 // 下一个列的 x 坐标：当前列宽 + gap
                 x += col.ColumnWidth + COLUMN_GAP;
@@ -126,7 +127,7 @@ namespace LiteMonitor
             //
             // ========== 6. 返回整体高度（固定 = 两行高度 + padding*2） ==========
             //
-            return pad * 2 + _rowH * 2;
+            return padV * 2 + _rowH * 2;
         }
 
         /// <summary>

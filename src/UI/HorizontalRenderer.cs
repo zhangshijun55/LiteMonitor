@@ -2,24 +2,34 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using LiteMonitor.src.Core;
+using LiteMonitor.Common;
 
 namespace LiteMonitor
 {
+    /// <summary>
+    /// 横版渲染器（基于列结构绘制）
+    /// 完全保留原版布局，不做任何功能添加。
+    /// 修复内容：
+    /// 1. Render 方法签名修复（支持 panelWidth）
+    /// 2. value/颜色 使用 UIUtils 统一入口
+    /// 3. 删除文件内重复工具函数
+    /// </summary>
     public static class HorizontalRenderer
     {
+        /// <summary>
+        /// 修正版：支持 panelWidth，完全匹配 UIController 的调用方式
+        /// </summary>
         public static void Render(Graphics g, Theme t, List<Column> cols, int panelWidth)
         {
             int panelHeight = (int)g.VisibleClipBounds.Height;
 
-            // 正确：Layout 给出的 panelWidth 才是真宽度，Renderer 不参与计算
+            // 背景按照原版保持不变
             using (var bg = new SolidBrush(ThemeManager.ParseColor(t.Color.Background)))
                 g.FillRectangle(bg, new Rectangle(0, 0, panelWidth, panelHeight));
 
             foreach (var col in cols)
                 DrawColumn(g, col, t);
         }
-
-
 
         private static void DrawColumn(Graphics g, Column col, Theme t)
         {
@@ -40,33 +50,37 @@ namespace LiteMonitor
 
         private static void DrawItem(Graphics g, MetricItem it, Rectangle rc, Theme t)
         {
+            // 原版写法：优先用 Short.xx
             string label = LanguageManager.T($"Short.{it.Key}");
-            string value = FormatValue(it);
+
+            // === 使用 UIUtils 统一格式化 ===
+            string value = UIUtils.FormatValue(it.Key, it.DisplayValue);
+            value = UIUtils.FormatHorizontalValue(value);//去除网络和磁盘的“/s”，小数点智能显示
 
             int colW = rc.Width;
             int fontH = t.FontItem.Height;
 
-            // 测量 label 宽度
+            // --- 测量 label 宽度（保留原版行为）---
             int wLabel = TextRenderer.MeasureText(
                 g, label, t.FontItem,
                 new Size(int.MaxValue, int.MaxValue),
                 TextFormatFlags.NoPadding
             ).Width;
 
-            // padding
+            // 原版逻辑：给 label 增加 padding
             wLabel += fontH / 2;
 
             // label 宽不能超过列宽
             if (wLabel > colW - fontH)
                 wLabel = colW - fontH;
 
-            // 剩下的全部给 value
+            // 剩下所有宽度给 value
             int wValue = colW - wLabel;
 
             Rectangle rcLabel = new Rectangle(rc.X, rc.Y, wLabel, rc.Height);
             Rectangle rcValue = new Rectangle(rc.X + wLabel, rc.Y, wValue, rc.Height);
 
-            // 绘制 label
+            // === label（左对齐）===
             TextRenderer.DrawText(
                 g,
                 label,
@@ -76,52 +90,17 @@ namespace LiteMonitor
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding
             );
 
-            // 绘制 value（右对齐）
+            // === value（右对齐）===
+            Color valColor = UIUtils.GetColor(it.Key, it.DisplayValue, t);
+
             TextRenderer.DrawText(
                 g,
                 value,
                 t.FontValue,
                 rcValue,
-                GetValueColor(it, t),
+                valColor,
                 TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding
             );
-        }
-
-
-
-
-        public static string FormatValue(MetricItem it)
-        {
-            string k = it.Key.ToUpperInvariant();
-
-            if (k.Contains("LOAD") || k.Contains("VRAM") || k.Contains("MEM"))
-                return $"{it.DisplayValue:0}%";
-
-            if (k.Contains("TEMP"))
-                return $"{it.DisplayValue:0}°C";
-
-            if (k.Contains("READ") || k.Contains("WRITE") ||
-                k.Contains("UP") || k.Contains("DOWN"))
-            {
-                double kb = it.DisplayValue / 1024.0;
-                if (kb >= 1024) return $"{kb / 1024:0.0}MB";
-                return $"{kb:0}KB";
-            }
-
-            return $"{it.DisplayValue:0}";
-        }
-
-        private static Color GetValueColor(MetricItem it, Theme t)
-        {
-            var (warn, crit) = UIRenderer.GetThresholds(it.Key, t);
-            float v = it.DisplayValue;
-
-            if (v >= crit)
-                return ThemeManager.ParseColor(t.Color.ValueCrit);
-            if (v >= warn)
-                return ThemeManager.ParseColor(t.Color.ValueWarn);
-
-            return ThemeManager.ParseColor(t.Color.ValueSafe);
         }
     }
 }

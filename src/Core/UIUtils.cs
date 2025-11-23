@@ -16,13 +16,13 @@ namespace LiteMonitor.Common
         // ============================================================
         public static string FormatValue(string key, float? raw)
         {
-            if (!raw.HasValue) return "--";
+            if (!raw.HasValue) return "0.0";
 
             float v = raw.Value;
             string k = key.ToUpperInvariant();
 
-            if (k.Contains("LOAD") || k.Contains("VRAM") || k.Contains("MEM")) return $"{0.0}%";
-            if (k.Contains("TEMP")) return $"{0.0}°C";
+            if (k.Contains("LOAD") || k.Contains("VRAM") || k.Contains("MEM")) return $"{v:0.0}%";
+            if (k.Contains("TEMP")) return $"{v:0.0}°C";
 
             // NET / DISK = 流量类
             if (k.StartsWith("NET") || k.StartsWith("DISK"))
@@ -147,20 +147,39 @@ namespace LiteMonitor.Common
         }
 
         // ============================================================
-        // ⑥ 文本测量（水平模式会用）
+        // ⑥ 横屏模式 格式化数值
         // ============================================================
-        public static int TextWidth(string s, Font f)
-            => TextRenderer.MeasureText(
-                   s, f,
-                   new Size(int.MaxValue, int.MaxValue),
-                   TextFormatFlags.NoPadding | TextFormatFlags.NoClipping
-               ).Width;
+        public static string FormatHorizontalValue(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return value;
 
-        public static int TextHeight(string s, Font f)
-            => TextRenderer.MeasureText(
-                   s, f,
-                   new Size(int.MaxValue, int.MaxValue),
-                   TextFormatFlags.NoPadding | TextFormatFlags.NoClipping
-               ).Height;
+            // 去掉 /s
+            value = value.Replace("/s", "", StringComparison.OrdinalIgnoreCase).Trim();
+
+            // 拆分 数字 + 单位（如：99.1KB, 2.3MB, 85℃）
+            var m = System.Text.RegularExpressions.Regex.Match(
+                value, @"^([\d.]+)([A-Za-z%°℃]+)$");
+
+            if (!m.Success) return value;
+
+            double num = double.Parse(m.Groups[1].Value);
+            string unit = m.Groups[2].Value;
+
+            // 单位长度≤3：采用智能规则
+            if (unit.Length <= 3)
+            {
+                return num >= 100
+                    ? ((int)Math.Round(num)) + unit       // 111.1 -> 111KB
+                    : num.ToString("0.0") + unit;         // 99.1 -> 99.1KB
+            }
+
+            // 单位长度>3：统一最多1位小数（≥100取整）
+            return num >= 100
+                ? ((int)Math.Round(num)) + unit
+                : num.ToString("0.0") + unit;
+        }
+
+
+
     }
 }

@@ -31,8 +31,8 @@ namespace LiteMonitor.src.Core
         public int GroupRadius { get; set; } = 10;
 
         public int GroupPadding { get; set; } = 8;
-        public int GroupSpacing { get; set; } = 14;
-        public int GroupBottom { get; set; } = 6;
+        public int GroupSpacing { get; set; } = 30;
+        public int GroupBottom { get; set; } = 0;
 
         public int ItemGap { get; set; } = 6;
         public int GroupTitleOffset { get; set; } = 6;

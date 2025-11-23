@@ -22,7 +22,8 @@ namespace LiteMonitor
         public double Opacity { get; set; } = 0.85;   // ← 窗口透明度（原 theme.window.opacity）
         public string Language { get; set; } = "zh";  // ← 语言：zh / en（对应 zh.json / en.json）
         public bool ClickThrough { get; set; } = false; // ← 鼠标穿透
-        public bool AutoHide { get; set; } = true;     // ← 靠边自动隐藏
+        public bool AutoHide { get; set; } = true;     // ← 靠边自动隐藏                     
+        public bool ClampToScreen { get; set; } = false; // ★限制窗口不能拖出屏幕边界
         public int PanelWidth { get; set; } = 240;   // ← 用户默认宽度
         public double UIScale { get; set; } = 1.0;  // 用户 UI 缩放，默认 1.00
 

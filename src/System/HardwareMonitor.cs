@@ -55,9 +55,25 @@ namespace LiteMonitor.src.System
         private void BuildSensorMap()
         {
             _map.Clear();
-            foreach (var hw in _computer.Hardware)
+
+            // ⭐ 按优先级排序：独显(GpuNvidia/GpuAmd) > 核显(GpuIntel) > 其他
+            var ordered = _computer.Hardware.OrderBy(h => GetHwPriority(h));
+
+            foreach (var hw in ordered)
                 RegisterHardware(hw);
+
             _lastMapBuild = DateTime.Now;
+        }
+
+        private static int GetHwPriority(IHardware hw)
+        {
+            return hw.HardwareType switch
+            {
+                HardwareType.GpuNvidia => 0, // 独显最高优先级
+                HardwareType.GpuAmd => 0,
+                HardwareType.GpuIntel => 1, // 核显靠后
+                _ => 2  // 其他最后
+            };
         }
 
         private void RegisterHardware(IHardware hw)

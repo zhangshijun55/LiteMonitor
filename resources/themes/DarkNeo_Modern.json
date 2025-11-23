@@ -7,8 +7,8 @@
     "cornerRadius": 12,
     "groupRadius": 10,
     "groupPadding": 8,
-    "groupSpacing": 20,
-    "groupBottom": 6,
+    "groupSpacing": 30,
+    "groupBottom": 0,
     "groupTitleOffset": 6,
     "itemGap": 6
   },
@@ -42,12 +42,12 @@
       "crit": 85
     },
     "temp": {
-      "warn": 65,
-      "crit": 85
+      "warn": 50,
+      "crit": 70
     },
     "vram": {
-      "warn": 75,
-      "crit": 90
+      "warn": 65,
+      "crit": 85
     },
     "mem": {
       "warn": 65,
