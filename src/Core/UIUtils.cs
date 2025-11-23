@@ -44,7 +44,7 @@ namespace LiteMonitor.Common
         {
             string k = key.ToUpperInvariant();
 
-            if (k.StartsWith("CPU.") || k.StartsWith("GPU.") || k.Contains("LOAD"))
+            if (k.Contains("LOAD"))
                 return (t.Thresholds.Load.Warn, t.Thresholds.Load.Crit);
 
             if (k.Contains("TEMP"))
@@ -53,10 +53,10 @@ namespace LiteMonitor.Common
             if (k.StartsWith("MEM"))
                 return (t.Thresholds.Mem.Warn, t.Thresholds.Mem.Crit);
 
-            if (k.StartsWith("GPU.VRAM"))
+            if (k.StartsWith("VRAM"))
                 return (t.Thresholds.Vram.Warn, t.Thresholds.Vram.Crit);
 
-            if (k.StartsWith("NET"))
+            if (k.StartsWith("NET")|| k.StartsWith("DISK"))
                 return (t.Thresholds.NetKBps.Warn, t.Thresholds.NetKBps.Crit);
 
             // 默认走 Load 阈值
