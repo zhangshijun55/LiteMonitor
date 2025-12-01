@@ -104,7 +104,7 @@ namespace LiteMonitor.Common
   
             // 格式化细节：
             // 所有单位都保留1位小数 (如 0.1 KB, 1.2 MB)
-            string format = "0.0";
+            string format = order <= 1 ? "0.0" : "0.00";
             
             // 注意：不加空格(1.2MB)，为了紧凑。如果需要空格可改为 $"{len.ToString(format)} {sizes[order]}{suffix}"
             return $"{len.ToString(format)}{sizes[order]}{suffix}";
