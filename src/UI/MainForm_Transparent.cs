@@ -548,7 +548,7 @@ namespace LiteMonitor
 
                 // 2. 方式 A：弹出气泡提示（推荐，不打扰）
                 string title = "⚡️LiteMonitor_v" + UpdateChecker.GetCurrentVersion();
-                string content = _cfg.Language == "zh-CN" ? "🎉 软件已成功更新到最新版本！" : "🎉 Software updated to latest version!";
+                string content = _cfg.Language == "ZH" ? "🎉 软件已成功更新到最新版本！" : "🎉 Software updated to latest version!";
                 ShowNotification(title, content, ToolTipIcon.Info); 
 
                 // 2. 方式 B：或者弹窗提示（如果你喜欢强提醒）
