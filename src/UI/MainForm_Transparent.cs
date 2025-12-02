@@ -270,7 +270,7 @@ namespace LiteMonitor
             // === 托盘图标 ===
             this.Icon = Properties.Resources.AppIcon;
             _tray.Icon = this.Icon;
-            _tray.Visible = true;
+            _tray.Visible = !_cfg.HideTrayIcon;
             _tray.Text = "LiteMonitor";
 
 

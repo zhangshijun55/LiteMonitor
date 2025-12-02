@@ -2,18 +2,21 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using LiteMonitor.src.Core;
+using System.Text.Json; // 引入这个用于克隆对象
 
 namespace LiteMonitor
 {
     public class ThresholdForm : Form
     {
-        private readonly Settings _cfg;
+        private Settings _cfg;          // 这里去掉 readonly，因为我们要给它赋新值（替身）
+        private Settings _sourceCfg;    // 新增：用于保存原始配置（真身）
         private float _scale = 1.0f;
 
         // === 🎨 现代深色主题 (Modern Dark Theme) ===
         // 1. 层级配色：背景最深 -> 卡片稍亮 -> 输入框最亮
-        private readonly Color C_Background = Color.FromArgb(24, 24, 24);    // 窗体底色
-        private readonly Color C_Card       = Color.FromArgb(40, 40, 40);    // 卡片背景
+        private readonly Color C_Background = Color.FromArgb(60, 60, 60);    // 窗体底色
+        private readonly Color C_Card       = Color.FromArgb(46, 46, 46);    // 卡片背景
+        private readonly Color C_Button_Bar = Color.FromArgb(50, 50, 50);    // 按钮栏背景
         private readonly Color C_InputBack = Color.FromArgb(55, 55, 55);    // 输入框背景
         private readonly Color C_Separator  = Color.FromArgb(60, 60, 60);    // 分割线
         
@@ -34,7 +37,13 @@ namespace LiteMonitor
 
         public ThresholdForm(Settings cfg)
         {
-            _cfg = cfg;
+            // 1. 记住真身
+            _sourceCfg = cfg;
+
+            // 2. 制造替身 (克隆)
+            // 原理：把配置转成文本再转回来，就得到了一个一模一样的新对象，但和原来的没关系
+            var json = JsonSerializer.Serialize(cfg);
+            _cfg = JsonSerializer.Deserialize<Settings>(json);
             
             // DPI 适配
             using (Graphics g = this.CreateGraphics())
@@ -45,7 +54,7 @@ namespace LiteMonitor
             // 字体初始化
             F_Title = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold);
             F_Label = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Regular);
-            F_Value = new Font("Consolas", 10.5F, FontStyle.Regular);
+            F_Value = new Font("Consolas", 10.5F, FontStyle.Bold);
 
             // 窗体属性
             this.Text = "报警阈值设置 (Threshold Settings)";
@@ -114,15 +123,24 @@ namespace LiteMonitor
             { 
                 Dock = DockStyle.Bottom, 
                 Height = S(66), 
-                BackColor = Color.FromArgb(255, 32, 32, 32) // 稍微透明一点或者纯色
+                BackColor = C_Button_Bar
             };
             // 顶部分割线
             bottomPanel.Controls.Add(new Label { Dock = DockStyle.Top, Height = 1, BackColor = C_Separator });
 
             var btnSave = CreateButton("保存 (Save)", C_Action, true);
             btnSave.Location = new Point(this.ClientSize.Width - S(240), S(15));
-            btnSave.Click += (s, e) => { _cfg.Save(); this.DialogResult = DialogResult.OK; this.Close(); };
-
+            // ★★★ 修改这里：点击保存时，把替身的数据覆盖回真身 ★★★
+            btnSave.Click += (s, e) => { 
+                // 只覆盖我们在窗口里修改的部分
+                _sourceCfg.Thresholds = _cfg.Thresholds;
+                _sourceCfg.AlertTempThreshold = _cfg.AlertTempThreshold;
+                
+                _sourceCfg.Save(); // 保存真身
+                
+                this.DialogResult = DialogResult.OK; 
+                this.Close(); 
+            };
             var btnCancel = CreateButton("取消 (Cancel)", Color.FromArgb(70, 70, 70), false);
             btnCancel.Location = new Point(this.ClientSize.Width - S(120), S(15));
             btnCancel.Click += (s, e) => this.Close();
