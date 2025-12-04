@@ -54,8 +54,8 @@ namespace LiteMonitor
             // 窗体属性
             this.Text = "告警阈值设置 (Threshold Settings)";
             // [修改] 窗体高度：960 -> 720 (避免太长)
-            this.Size = new Size(S(545), S(700)); 
-            this.MinimumSize = new Size(S(545), S(700));
+            this.Size = new Size(S(545), S(720)); 
+            this.MinimumSize = new Size(S(545), S(720));
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -278,7 +278,7 @@ namespace LiteMonitor
                 Font = F_Label,
                 AutoSize = true,
                 Anchor = AnchorStyles.Left | AnchorStyles.Top,
-                Margin = new Padding(0, S(4), 0, S(4)) // [修改] 垂直间距 10 -> 4
+                Margin = new Padding(0, S(5), 0, S(5)) // [修改] 垂直间距 10 -> 4
             };
             t.Controls.Add(lbl, 0, row);
 
@@ -304,7 +304,7 @@ namespace LiteMonitor
                 Font = F_Label,
                 AutoSize = true,
                 Anchor = AnchorStyles.Left | AnchorStyles.Top,
-                Margin = new Padding(0, S(4), 0, S(4)) // [修改] 垂直间距 10 -> 4
+                Margin = new Padding(0, S(5), 0, S(5)) // [修改] 垂直间距 10 -> 4
             };
             t.Controls.Add(lbl, 0, row);
 
