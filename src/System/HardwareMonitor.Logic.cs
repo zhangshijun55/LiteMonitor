@@ -169,19 +169,41 @@ namespace LiteMonitor.src.System
                 ISensor? s = null;
                 // 注意：GPU 传感器少，LINQ 查询开销可忽略
                 if (key == "GPU.Clock")
-                    // ★★★ 优化：增加 "shader" 匹配 ★★★
+                { 
+                    // 增加 "shader" 匹配
                     s = _cachedGpu.Sensors.FirstOrDefault(x => x.SensorType == SensorType.Clock && 
                         (Has(x.Name, "graphics") || Has(x.Name, "core") || Has(x.Name, "shader")));
-                
+                    
+                    // ★★★ 【修复 1】频率异常过滤 ★★★
+                    // 如果读数为 0 (休眠) 是正常的，但如果超过 6000MHz (6GHz) 肯定是传感器抽风
+                    if (s != null && s.Value.HasValue)
+                    {
+                        float val = s.Value.Value;
+                        if (val > 6000.0f) return null; // 过滤异常高频
+                        
+                        _cfg.UpdateMaxRecord(key, val);
+                        return val;
+                    }
+                }
                 else if (key == "GPU.Power")
-                    // ★★★ 优化：增加 "core" 匹配 (修复 B580 等显卡) ★★★
-                    s = _cachedGpu.Sensors.FirstOrDefault(x => x.SensorType == SensorType.Power && 
-                        (Has(x.Name, "package") || Has(x.Name, "ppt") || Has(x.Name, "board") || Has(x.Name, "core")) || Has(x.Name, "gpu") );
-
-                if (s != null && s.Value.HasValue)
                 {
-                    _cfg.UpdateMaxRecord(key, s.Value.Value);
-                    return s.Value.Value;
+                    // 增加 "core" 匹配
+                    s = _cachedGpu.Sensors.FirstOrDefault(x => x.SensorType == SensorType.Power && 
+                        (Has(x.Name, "package") || Has(x.Name, "ppt") || Has(x.Name, "board") || Has(x.Name, "core") || Has(x.Name, "gpu")));
+
+                    // ★★★ 【修复 2】功耗异常过滤 (你的问题核心) ★★★
+                    // 消费级显卡瞬间功耗不可能超过 1500W (4090 峰值也就 600W 左右)
+                    // 16368W 显然是错误数据，直接丢弃
+                    if (s != null && s.Value.HasValue)
+                    {
+                        float val = s.Value.Value;
+                        
+                        // 设定一个 2000W 的安全阀值
+                        if (val > 2000.0f) return null; 
+
+                        _cfg.UpdateMaxRecord(key, val);
+                        return val;
+                    }
                 }
             }
 
