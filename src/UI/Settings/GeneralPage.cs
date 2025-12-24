@@ -17,6 +17,7 @@ namespace LiteMonitor.src.UI.SettingsPage
         private LiteComboBox _cmbLang;
         private LiteCheck _chkAutoStart;
         private LiteCheck _chkTopMost;
+
         private LiteComboBox _cmbRefresh;
 
         private LiteCheck _chkAutoHide;
@@ -82,12 +83,7 @@ namespace LiteMonitor.src.UI.SettingsPage
             _chkAutoStart = new LiteCheck(Config.AutoStart, "Enable");
             group.AddItem(new LiteSettingsItem(LanguageManager.T("Menu.AutoStart"), _chkAutoStart));
 
-            // 4. Refresh Rate
-            _cmbRefresh = new LiteComboBox();
-            int[] rates = { 100, 200, 300, 500, 600, 700, 800, 1000, 1500, 2000, 3000 };
-            foreach (var r in rates) _cmbRefresh.Items.Add(r + " ms");
-            SetComboVal(_cmbRefresh, Config.RefreshMs + " ms");
-            group.AddItem(new LiteSettingsItem(LanguageManager.T("Menu.Refresh"), _cmbRefresh));
+           
 
             AddGroupToPage(group);
         }
@@ -138,6 +134,13 @@ namespace LiteMonitor.src.UI.SettingsPage
             SetComboVal(_cmbNet, string.IsNullOrEmpty(Config.PreferredNetwork) ? LanguageManager.T("Menu.Auto") : Config.PreferredNetwork);
             group.AddItem(new LiteSettingsItem(LanguageManager.T("Menu.NetworkSource"), _cmbNet));
 
+             // 4. Refresh Rate
+            _cmbRefresh = new LiteComboBox();
+            int[] rates = { 100, 200, 300, 500, 600, 700, 800, 1000, 1500, 2000, 3000 };
+            foreach (var r in rates) _cmbRefresh.Items.Add(r + " ms");
+            SetComboVal(_cmbRefresh, Config.RefreshMs + " ms");
+            group.AddItem(new LiteSettingsItem(LanguageManager.T("Menu.Refresh"), _cmbRefresh));
+            
             AddGroupToPage(group);
         }
 

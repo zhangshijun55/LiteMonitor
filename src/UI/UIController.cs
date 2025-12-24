@@ -209,10 +209,8 @@ namespace LiteMonitor
                 currentGroupKey = prefix;
 
                 // 创建 MetricItem
-                // 优先使用用户自定义的名称，没有则使用 Key 去查多语言
-                string label = !string.IsNullOrEmpty(cfgItem.UserLabel) 
-                    ? cfgItem.UserLabel 
-                    : LanguageManager.T("Items." + cfgItem.Key);
+                // 始终通过LanguageManager获取翻译，包括用户自定义的覆盖值
+                string label = LanguageManager.T("Items." + cfgItem.Key);
 
                 var item = new MetricItem 
                 { 
