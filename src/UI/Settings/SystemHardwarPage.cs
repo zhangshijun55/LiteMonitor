@@ -114,17 +114,22 @@ namespace LiteMonitor.src.UI.SettingsPage
         private void CreateSourceCard()
         {
             var group = new LiteSettingsGroup(LanguageManager.T("Menu.HardwareSettings"));
-
-            // 磁盘源
+            string strAuto = LanguageManager.T("Menu.Auto"); // 获取“自动”的翻译文本
+            // 1. 磁盘源修复
             _cmbDisk = new LiteComboBox();
+            _cmbDisk.Items.Add(strAuto); // ★ 核心修复：无条件先添加“自动”选项
             foreach (var d in HardwareMonitor.ListAllDisks()) _cmbDisk.Items.Add(d);
-            SetComboVal(_cmbDisk, string.IsNullOrEmpty(Config.PreferredDisk) ? LanguageManager.T("Menu.Auto") : Config.PreferredDisk);
+            
+            // 设置选中项（如果当前配置是空，就选“自动”）
+            SetComboVal(_cmbDisk, string.IsNullOrEmpty(Config.PreferredDisk) ? strAuto : Config.PreferredDisk);
             group.AddItem(new LiteSettingsItem(LanguageManager.T("Menu.DiskSource"), _cmbDisk));
 
-            // 网络源
+            // 2. 网络源修复
             _cmbNet = new LiteComboBox();
+            _cmbNet.Items.Add(strAuto); // ★ 核心修复：无条件先添加“自动”选项
             foreach (var n in HardwareMonitor.ListAllNetworks()) _cmbNet.Items.Add(n);
-            SetComboVal(_cmbNet, string.IsNullOrEmpty(Config.PreferredNetwork) ? LanguageManager.T("Menu.Auto") : Config.PreferredNetwork);
+            
+            SetComboVal(_cmbNet, string.IsNullOrEmpty(Config.PreferredNetwork) ? strAuto : Config.PreferredNetwork);
             group.AddItem(new LiteSettingsItem(LanguageManager.T("Menu.NetworkSource"), _cmbNet));
 
             // 刷新率
@@ -163,31 +168,52 @@ namespace LiteMonitor.src.UI.SettingsPage
         public override void Save()
         {
             if (!_isLoaded) return;
-            
+
+            // 1. 基础保存 (语言、自启、托盘、刷新率)
             Config.AutoStart = _chkAutoStart.Checked;
+            Config.HideTrayIcon = _chkHideTray.Checked;
             
+            // 语言处理
             if (_cmbLang.SelectedItem != null) {
                 string s = _cmbLang.SelectedItem.ToString();
                 Config.Language = (s == "Auto") ? "" : s.Split('(')[0].Trim().ToLower();
             }
-            
-            Config.HideTrayIcon = _chkHideTray.Checked;
-            
+
+            // 刷新率处理
             Config.RefreshMs = ParseInt(_cmbRefresh.Text);
             if (Config.RefreshMs < 50) Config.RefreshMs = 1000;
-            
-            if (_cmbDisk.SelectedItem != null) { string d = _cmbDisk.SelectedItem.ToString(); Config.PreferredDisk = (d == "Auto") ? "" : d; }
-            if (_cmbNet.SelectedItem != null) { string n = _cmbNet.SelectedItem.ToString(); Config.PreferredNetwork = (n == "Auto") ? "" : n; }
 
+            // =========================================================
+            // [极简修复] 2. 硬件来源保存
+            // =========================================================
+            
+            // 定义一个简单的转换逻辑：如果是 "Auto" 或 "自动"，就存为空字符串
+            string GetVal(object item) 
+            {
+                string s = item?.ToString() ?? "";
+                return (s == "Auto" || s == LanguageManager.T("Menu.Auto")) ? "" : s;
+            }
+
+            Config.PreferredDisk = GetVal(_cmbDisk.SelectedItem);
+            Config.PreferredNetwork = GetVal(_cmbNet.SelectedItem);
+
+            // =========================================================
+            
+            // 3. 最大值记录保存
             Config.RecordedMaxCpuPower = ParseFloat(_txtMaxCpuPower.Inner.Text);
             Config.RecordedMaxCpuClock = ParseFloat(_txtMaxCpuClock.Inner.Text);
             Config.RecordedMaxGpuPower = ParseFloat(_txtMaxGpuPower.Inner.Text);
             Config.RecordedMaxGpuClock = ParseFloat(_txtMaxGpuClock.Inner.Text);
 
-            // 应用更改
+            // 4. 应用更改 (关键步骤)
             AppActions.ApplyAutoStart(Config);
             AppActions.ApplyVisibility(Config, this.MainForm);
-            
+
+            // ★★★ 核心修复：直接调用，让硬件逻辑重新加载 ★★★
+            // 无论有没有改动，刷新一下总是安全的，代码也最简单
+            AppActions.ApplyMonitorLayout(this.UI, this.MainForm);
+
+            // 语言切换处理
             if (_originalLanguage != Config.Language) {
                 AppActions.ApplyLanguage(Config, this.UI, this.MainForm);
                 _originalLanguage = Config.Language; 

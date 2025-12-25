@@ -67,7 +67,7 @@
         "Refresh": "刷新频率",
         "Width": "界面宽度",
         "Scale": "界面缩放",
-        "NetworkSource": "首选网络",
+        "NetworkSource": "首选网卡",
         "DiskSource": "首选磁盘",
         "Auto": "自动模式",
         "Language": "语言/Language",
