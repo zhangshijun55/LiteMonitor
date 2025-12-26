@@ -48,15 +48,17 @@ namespace LiteMonitor.src.UI.SettingsPage
                 chk => chk.CheckedChanged += (s, e) => EnsureSafeVisibility(null, null, chk)
             );
 
-            // 2. 鼠标穿透
-            AddBool(group, "Menu.ClickThrough", () => Config.TaskbarClickThrough, v => Config.TaskbarClickThrough = v);
-
             // ★★★ 新增：单行模式开关 ★★★
             // 提示：你需要在语言文件(zh.json)中添加 "Menu.TaskbarSingleLine": "单行显示"
             AddBool(group, "Menu.TaskbarSingleLine", 
                 () => Config.TaskbarSingleLine, 
                 v => Config.TaskbarSingleLine = v
             );
+
+            // 2. 鼠标穿透
+            AddBool(group, "Menu.ClickThrough", () => Config.TaskbarClickThrough, v => Config.TaskbarClickThrough = v);
+
+          
 
             // 3. 样式 (Bold/Regular)
             AddComboIndex(group, "Menu.TaskbarStyle",
