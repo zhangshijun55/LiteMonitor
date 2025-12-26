@@ -33,6 +33,8 @@ namespace LiteMonitor
         public string LastAutoNetwork { get; set; } = "";
         public string PreferredDisk { get; set; } = "";
         public string LastAutoDisk { get; set; } = "";
+        
+        // 主窗体所在的屏幕设备名 (用于记忆上次位置)
         public string ScreenDevice { get; set; } = "";
 
         // ====== 任务栏 ======
@@ -44,10 +46,13 @@ namespace LiteMonitor
         public float TaskbarFontSize { get; set; } = 10f;
         public bool TaskbarFontBold { get; set; } = true;
         
+        // ★★★ 新增：指定任务栏显示的屏幕设备名 ("" = 自动/主屏) ★★★
+        public string TaskbarMonitorDevice { get; set; } = "";
+
         // 任务栏行为配置
         public bool TaskbarClickThrough { get; set; } = false;     // 鼠标穿透
-        // ★★★ 新增：任务栏单行模式 ★★★
-        public bool TaskbarSingleLine { get; set; } = false;
+        public bool TaskbarSingleLine { get; set; } = false;// 单行显示
+        public int TaskbarManualOffset { get; set; } = 0;// 手动偏移量 (像素)
 
         // ====== 任务栏：高级自定义外观 ======
         public bool TaskbarCustomStyle { get; set; } = false; // 总开关
@@ -59,24 +64,19 @@ namespace LiteMonitor
         public string TaskbarColorCrit { get; set; } = "#C03030";  // 严重 (橙红)
         public string TaskbarColorBg { get; set; } = "#D2D2D2";    // 防杂边背景色 (透明键)
 
-        // ★★★ 新增：双击动作配置 ★★★
-        // 0 = 默认 (主界面:切换横竖屏 / 任务栏:显隐主界面)
-        // 1 = 任务管理器
-        // 2 = 设置中心
-        // 3 = 历史流量
+        // 双击动作配置
         public int MainFormDoubleClickAction { get; set; } = 0;
         public int TaskbarDoubleClickAction { get; set; } = 0;
 
-        // ★★★ 新增：内存/显存显示模式 ★★★
-        // 0 = 百分比 (默认)
-        // 1 = 已用容量
+        // 内存/显存显示模式
         public int MemoryDisplayMode { get; set; } = 0;
 
         // ★ 2. 运行时缓存：存储探测到的总容量 (GB)
         [JsonIgnore] public static float DetectedRamTotalGB { get; set; } = 0;
         [JsonIgnore] public static float DetectedGpuVramTotalGB { get; set; } = 0;
 
-        public bool UseSystemCpuLoad { get; set; } = false; // 默认为 false，用户开启后使用系统计数器
+        public bool UseSystemCpuLoad { get; set; } = false; 
+        
         // ====== 记录与报警 ======
         public float RecordedMaxCpuPower { get; set; } = 65.0f;
         public float RecordedMaxCpuClock { get; set; } = 4200.0f;
@@ -94,53 +94,39 @@ namespace LiteMonitor
         [JsonIgnore] public long SessionDownloadBytes { get; set; } = 0;
         [JsonIgnore] private DateTime _lastAutoSave = DateTime.MinValue;
 
-        // ★★★★★ [核心重构] 监控项列表 ★★★★★
-        // 替代了原来的 EnabledSet，支持排序、自定义名称、前后端分离
         public Dictionary<string, string> GroupAliases { get; set; } = new Dictionary<string, string>();
         public List<MonitorItemConfig> MonitorItems { get; set; } = new List<MonitorItemConfig>();
 
-        // 辅助方法：判断某类监控是否开启 (用于 HardwareMonitor)
-        // 例如 IsAnyEnabled("CPU") 会检查 CPU.Load, CPU.Temp 等是否有任意一个开启
         public bool IsAnyEnabled(string keyPrefix)
         {
             return MonitorItems.Any(x => x.Key.StartsWith(keyPrefix, StringComparison.OrdinalIgnoreCase) && (x.VisibleInPanel || x.VisibleInTaskbar));
         }
 
-        // ★★★ 核心新增：同步自定义名称到翻译器 ★★★
         public void SyncToLanguage()
         {
             LanguageManager.ClearOverrides();
-
-            // 1. 同步组名
             if (GroupAliases != null)
             {
                 foreach (var kv in GroupAliases)
-                {
                     LanguageManager.SetOverride("Groups." + kv.Key, kv.Value);
-                }
             }
-
-            // 2. 同步监控项名
             if (MonitorItems != null)
             {
                 foreach (var item in MonitorItems)
                 {
                     if (!string.IsNullOrEmpty(item.UserLabel))
                         LanguageManager.SetOverride("Items." + item.Key, item.UserLabel);
-
                     if (!string.IsNullOrEmpty(item.TaskbarLabel))
                         LanguageManager.SetOverride("Short." + item.Key, item.TaskbarLabel);
                 }
             }
         }
 
-
         public void UpdateMaxRecord(string key, float val)
         {
             bool changed = false;
             if (val <= 0 || float.IsNaN(val) || float.IsInfinity(val)) return;
             
-            // 简单防错
             if (key.Contains("Clock") && val > 10000) return; 
             if (key.Contains("Power") && val > 1000) return;
 
@@ -173,17 +159,9 @@ namespace LiteMonitor
                 }
             }
             catch { }
-            // ★★★ 核心修复：确保集合不为 null，防止 OnShow 崩溃 ★★★
             if (s.GroupAliases == null) s.GroupAliases = new Dictionary<string, string>();
-            
-            if (s.MonitorItems == null || s.MonitorItems.Count == 0)
-            {
-                s.InitDefaultItems();
-            }
-            
-            // ★★★ 核心修复：同步自定义名称到翻译器 ★★★
+            if (s.MonitorItems == null || s.MonitorItems.Count == 0) s.InitDefaultItems();
             s.SyncToLanguage();
-            
             return s;
         }
 
@@ -197,55 +175,37 @@ namespace LiteMonitor
             catch { }
         }
 
-        // 初始化默认监控项 (迁移逻辑)
         private void InitDefaultItems()
         {
             MonitorItems = new List<MonitorItemConfig>
             {
-                // Key 必须对应 HardwareMonitor.Logic.cs 中的解析键值
-                // SortIndex 决定默认排序
                 new MonitorItemConfig { Key = "CPU.Load",  SortIndex = 0, VisibleInPanel = true, VisibleInTaskbar = true },
                 new MonitorItemConfig { Key = "CPU.Temp",  SortIndex = 1, VisibleInPanel = true, VisibleInTaskbar = true },
                 new MonitorItemConfig { Key = "CPU.Clock", SortIndex = 2, VisibleInPanel = false },
                 new MonitorItemConfig { Key = "CPU.Power", SortIndex = 3, VisibleInPanel = false },
-
                 new MonitorItemConfig { Key = "GPU.Load",  SortIndex = 10, VisibleInPanel = true, VisibleInTaskbar = true },
                 new MonitorItemConfig { Key = "GPU.Temp",  SortIndex = 11, VisibleInPanel = true },
                 new MonitorItemConfig { Key = "GPU.VRAM",  SortIndex = 12, VisibleInPanel = true },
                 new MonitorItemConfig { Key = "GPU.Clock", SortIndex = 13, VisibleInPanel = false },
                 new MonitorItemConfig { Key = "GPU.Power", SortIndex = 14, VisibleInPanel = false },
-
                 new MonitorItemConfig { Key = "MEM.Load",  SortIndex = 20, VisibleInPanel = true, VisibleInTaskbar = true },
-
                 new MonitorItemConfig { Key = "DISK.Read", SortIndex = 30, VisibleInPanel = true },
                 new MonitorItemConfig { Key = "DISK.Write",SortIndex = 31, VisibleInPanel = true },
-
                 new MonitorItemConfig { Key = "NET.Up",    SortIndex = 40, VisibleInPanel = true, VisibleInTaskbar = true },
                 new MonitorItemConfig { Key = "NET.Down",  SortIndex = 41, VisibleInPanel = true, VisibleInTaskbar = true },
-                
                 new MonitorItemConfig { Key = "DATA.DayUp",  SortIndex = 50, VisibleInPanel = true },
                 new MonitorItemConfig { Key = "DATA.DayDown",SortIndex = 51, VisibleInPanel = true }
             };
         }
     }
 
-    // ★★★ [新类] 单个监控项配置 ★★★
     public class MonitorItemConfig
     {
         public string Key { get; set; } = "";
-        
-        // 用户自定义名称 (如果为空，UI层会使用 LanguageManager 的默认翻译)
         public string UserLabel { get; set; } = ""; 
-        // ★新增：任务栏显示的简短名称 (如 "U:20%")
         public string TaskbarLabel { get; set; } = "";
-        
-        // 主面板开关
         public bool VisibleInPanel { get; set; } = true;
-        
-        // 任务栏开关 (实现你的需求：任务栏只看重要项)
         public bool VisibleInTaskbar { get; set; } = false;
-        
-        // 排序索引 (未来拖拽排序用)
         public int SortIndex { get; set; } = 0;
     }
 

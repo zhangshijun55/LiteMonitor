@@ -221,19 +221,37 @@ namespace LiteMonitor
         {
             if (show)
             {
+                // ★★★ 核心修复：检查目标屏幕是否发生了变化 ★★★
+                if (_taskbar != null && !_taskbar.IsDisposed)
+                {
+                    // 如果当前运行的任务栏窗口所在的屏幕，与配置中的不一致
+                    // 或者配置变成了 "" (自动)，但当前锁死在某个设备上
+                    // 则关闭旧窗口，强制重建
+                    if (_taskbar.TargetDevice != _cfg.TaskbarMonitorDevice)
+                    {
+                        _taskbar.Close();
+                        _taskbar.Dispose();
+                        _taskbar = null;
+                    }
+                }
+
                 if (_taskbar == null || _taskbar.IsDisposed)
                 {
-                    // ★ 修改这里：传入 'this' (MainForm 实例)
                     if (_ui != null)
                     {
                         _taskbar = new TaskbarForm(_cfg, _ui, this);
-                        _taskbar.Show();  // ★ 必须真正 Show 出来
+                        _taskbar.Show();
                     }
                 }
                 else
                 {
+                    // 只是显隐切换，不需要重建
                     if (!_taskbar.Visible)
+                    {
                         _taskbar.Show();
+                        // 额外调用一次 Reload 以确保颜色/字体等其他非屏幕配置也刷新
+                        _taskbar.ReloadLayout(); 
+                    }
                 }
             }
             else
@@ -525,9 +543,13 @@ namespace LiteMonitor
 
         private void SavePos()
         {
-            ClampToScreen(); // ★ 新增：确保保存前被校正
-            var scr = Screen.FromControl(this);
-            _cfg.ScreenDevice = scr.DeviceName;  // ★新增：保存屏幕ID
+            ClampToScreen(); 
+            
+            // ★★★ 优化：使用中心点判断屏幕，比 FromControl 更靠谱 (防止跨屏边缘识别错误) ★★★
+            var center = new Point(Left + Width / 2, Top + Height / 2);
+            var scr = Screen.FromPoint(center);
+            
+            _cfg.ScreenDevice = scr.DeviceName;
             _cfg.Position = new Point(Left, Top);
             _cfg.Save();
         }

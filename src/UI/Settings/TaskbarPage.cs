@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq; // ★ 需要引用 Linq
 using System.Windows.Forms;
 using LiteMonitor.src.Core;
 using LiteMonitor.src.UI.Controls;
@@ -48,18 +49,6 @@ namespace LiteMonitor.src.UI.SettingsPage
                 chk => chk.CheckedChanged += (s, e) => EnsureSafeVisibility(null, null, chk)
             );
 
-            // ★★★ 新增：单行模式开关 ★★★
-            // 提示：你需要在语言文件(zh.json)中添加 "Menu.TaskbarSingleLine": "单行显示"
-            AddBool(group, "Menu.TaskbarSingleLine", 
-                () => Config.TaskbarSingleLine, 
-                v => Config.TaskbarSingleLine = v
-            );
-
-            // 2. 鼠标穿透
-            AddBool(group, "Menu.ClickThrough", () => Config.TaskbarClickThrough, v => Config.TaskbarClickThrough = v);
-
-          
-
             // 3. 样式 (Bold/Regular)
             AddComboIndex(group, "Menu.TaskbarStyle",
                 new[] { LanguageManager.T("Menu.TaskbarStyleBold"), LanguageManager.T("Menu.TaskbarStyleRegular") },
@@ -69,24 +58,68 @@ namespace LiteMonitor.src.UI.SettingsPage
                     else { Config.TaskbarFontSize = 10f; Config.TaskbarFontBold = true; }
                 }
             );
+
             
-            // ★★★ 新增：双击动作设置 ★★★
+
+             // 4. 单行显示
+            AddBool(group, "Menu.TaskbarSingleLine", 
+                () => Config.TaskbarSingleLine, 
+                v => Config.TaskbarSingleLine = v
+            );
+
+            // 2. 鼠标穿透
+            AddBool(group, "Menu.ClickThrough", () => Config.TaskbarClickThrough, v => Config.TaskbarClickThrough = v);
+           
+
+            // ★★★ 新增：选择显示器 ★★★
+            // 获取所有屏幕列表
+            var screens = Screen.AllScreens;
+            // 构造显示名称： "1: \\.\DISPLAY1 [Main]"
+            var screenNames = screens.Select((s, i) => 
+                $"{i + 1}: {s.DeviceName.Replace(@"\\.\DISPLAY", "Display ")}{(s.Primary ? " [Main]" : "")}"
+            ).ToList();
+            
+            // 插入 "自动 (主屏)" 选项
+            screenNames.Insert(0, LanguageManager.T("Menu.Auto"));
+            AddComboIndex(group, "Menu.TaskbarMonitor", screenNames.ToArray(), 
+                () => {
+                    // Getter: 根据保存的 DeviceName 找到对应 Index
+                    if (string.IsNullOrEmpty(Config.TaskbarMonitorDevice)) return 0;
+                    var idx = Array.FindIndex(screens, s => s.DeviceName == Config.TaskbarMonitorDevice);
+                    return idx >= 0 ? idx + 1 : 0;
+                },
+                idx => {
+                    // Setter: 保存选中的 DeviceName
+                    if (idx == 0) Config.TaskbarMonitorDevice = ""; // 自动
+                    else Config.TaskbarMonitorDevice = screens[idx - 1].DeviceName;
+                }
+            );
+
+            // 5. 双击操作
             string[] actions = { 
-                LanguageManager.T("Menu.ActionToggleVisible"),    // 0: 显示/隐藏主界面
-                LanguageManager.T("Menu.ActionTaskMgr"),      // 1: 任务管理器
-                LanguageManager.T("Menu.ActionSettings"),           // 2: 设置
-                LanguageManager.T("Menu.ActionTrafficHistory")      // 3: 历史流量
+                LanguageManager.T("Menu.ActionToggleVisible"),
+                LanguageManager.T("Menu.ActionTaskMgr"), 
+                LanguageManager.T("Menu.ActionSettings"),
+                LanguageManager.T("Menu.ActionTrafficHistory")
             };
             AddComboIndex(group, "Menu.DoubleClickAction", actions,
                 () => Config.TaskbarDoubleClickAction,
                 idx => Config.TaskbarDoubleClickAction = idx
             );
 
+
             // 4. 对齐
             AddComboIndex(group, "Menu.TaskbarAlign",
                 new[] { LanguageManager.T("Menu.TaskbarAlignRight"), LanguageManager.T("Menu.TaskbarAlignLeft") },
                 () => Config.TaskbarAlignLeft ? 1 : 0,
                 idx => Config.TaskbarAlignLeft = (idx == 1)
+            );
+
+            // ★★★ 新增：手动偏移量修正 (支持负数) ★★★
+            // 提示：你可以在 zh.json 中添加 "Menu.TaskbarOffsetAdjust": "偏移量修正 (px)"
+            AddNumberInt(group, "Menu.TaskbarOffset", "px", 
+                () => Config.TaskbarManualOffset, 
+                v => Config.TaskbarManualOffset = v
             );
 
             group.AddFullItem(new LiteNote(LanguageManager.T("Menu.TaskbarAlignTip"), 0));
@@ -98,7 +131,6 @@ namespace LiteMonitor.src.UI.SettingsPage
             var group = new LiteSettingsGroup(LanguageManager.T("Menu.TaskbarCustomColors"));
             _customColorInputs.Clear();
 
-            // 1. 【第一行-左侧】自定义开关 (AddBool 内部会调用 AddItem 占用左边一格)
             AddBool(group, "Menu.TaskbarCustomColors", 
                 () => Config.TaskbarCustomStyle, 
                 v => Config.TaskbarCustomStyle = v,
@@ -107,7 +139,6 @@ namespace LiteMonitor.src.UI.SettingsPage
                 }
             );
 
-            // 2. 【第一行-右侧】屏幕取色工具 (AddItem 会自动填到右边那一格)
             var tbResult = new LiteUnderlineInput("#000000", "", "", 65, null, HorizontalAlignment.Center);
             tbResult.Inner.ReadOnly = true; 
             var btnPick = new LiteSortBtn("🖌"); 
@@ -125,19 +156,15 @@ namespace LiteMonitor.src.UI.SettingsPage
                         tbResult.Inner.Text = hex;
                         f.Close();
 
-                        // 弹出询问：使用国际化函数
                         string confirmMsg = string.Format("{0} {1}?", LanguageManager.T("Menu.ScreenColorPickerTip"), hex);
                         if (MessageBox.Show(confirmMsg, "LiteMonitor", MessageBoxButtons.YesNo) == DialogResult.Yes)
                         {
-                            // 1. 更新物理配置
                             Config.TaskbarColorBg = hex;
-
-                            // 2. 联动更新 UI (遍历已有的颜色输入框找到背景色那一项)
                             foreach (var control in _customColorInputs)
                             {
                                 if (control is LiteColorInput ci && ci.Input.Inner.Tag?.ToString() == "Menu.BackgroundColor")
                                 {
-                                    ci.HexValue = hex; // 这会触发 UI 上的色块和文字同时更新
+                                    ci.HexValue = hex; 
                                     break;
                                 }
                             }
@@ -152,16 +179,12 @@ namespace LiteMonitor.src.UI.SettingsPage
             toolCtrl.Controls.Add(btnPick);
             group.AddItem(new LiteSettingsItem(LanguageManager.T("Menu.ScreenColorPicker"), toolCtrl));
 
-            // 3. 【第二行】说明文案 (占满一整行)
             group.AddFullItem(new LiteNote(LanguageManager.T("Menu.TaskbarCustomTip"), 0));
 
-            // 4. 【后续行】批量添加颜色列表
             void AddC(string key, Func<string> get, Action<string> set)
             {
                 var input = AddColor(group, key, get, set, Config.TaskbarCustomStyle);
                 _customColorInputs.Add(input);
-                
-                // 为了方便上面的取色器联动，我们在创建时给 Inner 增加一个标记
                 if (input is LiteColorInput lci)
                 {
                     lci.Input.Inner.Tag = key;
