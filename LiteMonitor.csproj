@@ -39,6 +39,9 @@
 		<Content Include="resources\Updater.exe">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
+    <Content Include="使用说明(必读).txt">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
 	</ItemGroup>
 	
 	
