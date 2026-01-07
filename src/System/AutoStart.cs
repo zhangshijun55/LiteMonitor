@@ -29,11 +29,10 @@ namespace LiteMonitor.src.SystemServices
             if (enabled)
             {
                 // 使用 XML 方案，这是唯一能同时满足 [不报PowerShell错误] + [实现电池启动] 的方案
+                string tempXmlPath = Path.Combine(Path.GetTempPath(), $"LiteMonitor_Task_{Guid.NewGuid()}.xml");
+
                 try
                 {
-                    // 生成临时 XML 文件路径
-                    string tempXmlPath = Path.Combine(Path.GetTempPath(), $"LiteMonitor_Task_{Guid.NewGuid()}.xml");
-                    
                     // 生成 XML 内容
                     string xmlContent = GetTaskXml(exePath);
                     
@@ -56,17 +55,23 @@ namespace LiteMonitor.src.SystemServices
                     {
                         p?.WaitForExit();
                         
-                        // 可选：检查退出码，如果非0则记录日志，但不建议弹窗打扰用户，除非调试
+                        // 可选：检查退出码，如果非0则记录日志
                         // if (p.ExitCode != 0) { ... }
                     }
-
-                    // 立即清理临时文件
-                    if (File.Exists(tempXmlPath)) File.Delete(tempXmlPath);
                 }
                 catch (Exception ex)
                 {
                     // 捕获所有 IO 或 进程异常
                     MessageBox.Show($"设置失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                finally
+                {
+                    // 确保无论是否出错，都尝试清理临时文件
+                    try
+                    {
+                        if (File.Exists(tempXmlPath)) File.Delete(tempXmlPath);
+                    }
+                    catch { /* 忽略删除失败，临时文件残留无害 */ }
                 }
             }
             else
@@ -112,12 +117,13 @@ namespace LiteMonitor.src.SystemServices
             // 细节保留：获取工作目录，对应你原始代码的 /STRTIN
             string exeDir = Path.GetDirectoryName(exePath)!;
             
-            // 获取当前用户，对应原始代码的 /RU
-            string userId = WindowsIdentity.GetCurrent().Name;
+            // ★★★ 核心修正：移除 UserId 获取逻辑 ★★★
+            // 旧逻辑: string userId = WindowsIdentity.GetCurrent().Name;
+            // 修正原因: 显式指定 Microsoft 账户会导致 "网络地址无效" 错误。
+            // 修正方案: 移除 <UserId> 节点，依靠 InteractiveToken 自动绑定当前用户。
 
             // ★★★ 细节处理：XML 特殊字符转义 ★★★
             // 你的原始代码只处理了引号，这里必须处理 XML 敏感字符 (& < > " ')
-            // 否则如果路径里包含 '&' (例如 D:\Tom&Jerry\App.exe)，任务会创建失败
             string safeExePath = EscapeXml(exePath);
             string safeExeDir = EscapeXml(exeDir);
             
@@ -134,13 +140,11 @@ namespace LiteMonitor.src.SystemServices
   <Triggers>
     <LogonTrigger>
       <Enabled>true</Enabled>
-      <UserId>{userId}</UserId>
       <Delay>PT2S</Delay>
     </LogonTrigger>
   </Triggers>
   <Principals>
     <Principal id=""Author"">
-      <UserId>{userId}</UserId>
       <LogonType>InteractiveToken</LogonType>
       <RunLevel>HighestAvailable</RunLevel>
     </Principal>
